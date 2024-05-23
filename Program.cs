@@ -3,12 +3,15 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using WorkoutsManagement.Models.Client;
+using WorkoutsManagement.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<WorkoutContext>(opt => opt.UseInMemoryDatabase("WorkoutDB"));
 builder.Services.AddScoped<IWorkoutRepository, WorkoutRepository>();
 builder.Services.AddScoped<IExerciseRepository, ExerciseRepository>();
+builder.Services.AddScoped<IWorkoutDateRepository, WorkoutDateRepository>();
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 //Enable swagger
@@ -33,6 +36,26 @@ if (app.Environment.IsDevelopment())
         config.DocExpansion = "list";
     });
 }
+
+// {
+//     "id": "1",
+//     "title": "Upper Body Workout",
+//     "description": "Focuses on chest, shoulders, back, and arms.",
+//     "exercises": [
+//     {
+//         "name": "Push-ups",
+//         "sets": 3,
+//         "reps": 10,
+//         "duration": "10 minutes"
+//     },
+//     {
+//         "name": "Pull-ups",
+//         "sets": 3,
+//         "reps": 8,
+//         "duration": "15 minutes"
+//     }
+//     ]
+// }
 
 app.MapPost("/workout", (Workout newWorkout, IWorkoutRepository workoutRepository, IExerciseRepository exerciseRepository) =>
 {
@@ -92,6 +115,58 @@ app.MapGet("/workout/summary/{id}", (int id, IExerciseRepository exerciseReposit
         };
 
     return Results.Ok(workoutSummary);
+});
+
+// {
+//     "date": "2024-04-01",
+//     "workouts": [
+//     {
+//         "title": "Upper Body Workout",
+//         "description": "Focuses on chest, shoulders, back, and arms.",
+//         "summary": {
+//             "totalSets": 6,
+//             "totalReps": 34,
+//             "totalDuration": "25 minutes"
+//         },
+//         "exercises": [
+//         {
+//             "name": "Push-ups",
+//             "sets": 3,
+//             "reps": 10,
+//             "duration": "10 minutes"
+//         },
+//         {
+//             "name": "Pull-ups",
+//             "sets": 3,
+//             "reps": 8,
+//             "duration": "15 minutes"
+//         }
+//         ]
+//     }
+//     ]
+// }
+
+app.MapPost("/workout/date", (string workoutId, DateTime date, IWorkoutRepository workoutRepository, IWorkoutDateRepository workoutDateRepository) =>
+{
+    var existingWorkout = workoutRepository.GetWorkout(workoutId);
+
+    if (existingWorkout == null){
+        return Results.BadRequest($"Workout with workout id {workoutId} does not exist");
+    }
+    
+    DateTime temp;
+    if(DateTime.TryParse(date.ToString(), out temp))
+    {
+        workoutDateRepository.AddWorkoutDate(temp, workoutId);
+    }
+    else
+    {
+        Results.BadRequest("Invalid date format");
+    }
+    
+    var workoutWithDate = new WorkoutWithDate(date, new List<Workout> { existingWorkout});
+
+    return Results.Created($"/workout/date", workoutWithDate);
 });
 
 app.Run();

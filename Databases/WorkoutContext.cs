@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using WorkoutsManagement.Models.Database;
 
 public class WorkoutContext : DbContext
 {
@@ -7,4 +8,6 @@ public class WorkoutContext : DbContext
 
     public DbSet<WorkoutDb> Workouts { get; set; }
     public DbSet<ExerciseDb> Exercises { get; set; }
+    
+    public DbSet<WorkoutDatesDb> WorkoutDates { get; set; }
 }
